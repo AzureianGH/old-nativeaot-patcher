@@ -19,6 +19,7 @@
     
     <!-- Cosmos.Sdk is not compatible with Global Package managment -->
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
   </PropertyGroup>
 
   <!-- Add any folder(s) where *.asm files exist -->
@@ -37,6 +38,11 @@
     <Reference Include="Test.CoreLib">
       <HintPath>$(OutputPath)Test.CoreLib.dll</HintPath>
     </Reference>
+  </ItemGroup>
+
+  <!-- Add project reference -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\TestCoreLib\Test.CoreLib.csproj" />
   </ItemGroup>
 
 </Project>

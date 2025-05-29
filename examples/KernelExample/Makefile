@@ -1,19 +1,29 @@
 DOTNET = dotnet
-ARGS = publish -c Debug -r linux-x64
+ARGS = build
 CSPROJ = Kernel.csproj
 
 QEMU = qemu-system-x86_64
-QEMU_OUTPUT = ./output/Kernel.iso
+QEMU_OUTPUT = ..\..\artifacts\bin\Kernel\debug\cosmos\Kernel.iso
 QEMU_ARGS = -cdrom $(QEMU_OUTPUT)
 
 all: build run
 
 # Build the kernel
-build:
+win:
+	rm -rf ..\..\artifacts\obj\Kernel\debug\cosmos\asm
 	$(DOTNET) $(ARGS) $(CSPROJ)
+	
 
 # Run the kernel (requires build)
-run: build
+win-run: win
+	$(QEMU) $(QEMU_ARGS)
+win-run-d: win-run
+	$(QEMU) $(QEMU_ARGS) -s -S
+
+win-verbose:
+	$(DOTNET) $(ARGS) $(CSPROJ) --verbosity detailed
+
+win-verbose-run: win-verbose
 	$(QEMU) $(QEMU_ARGS)
 
 # Clean the build
@@ -23,4 +33,4 @@ clean:
 	rm -rf ./obj/
 	rm -rf ./output/
 
-.PHONY: build run clean
+.PHONY: win win-run clean

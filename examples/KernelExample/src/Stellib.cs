@@ -1,4 +1,9 @@
+using System;
+using EarlyBird;
+using EarlyBird.Conversion;
 using EarlyBird.PSF;
+using EarlyBird.String;
+using static EarlyBird.Internal.Native;
 
 namespace EarlyBird
 {
@@ -66,9 +71,27 @@ namespace EarlyBird
             *(ulong*)FreeListHead = heapSize; // Block size
             *((ulong*)FreeListHead + 1) = 0; // Next block pointer
         }
+        public static unsafe char[] AllocCharArray(int length)
+        {
+            return null;
+        }
+
+        public static IntPtr AllocSafe(uint size)
+        {
+            void* ptr = Alloc(size);
+            if (ptr == null)
+            {
+                throw null;
+            }
+            return new IntPtr(ptr);
+        }
 
         public static void* Alloc(uint size)
         {
+            if (size == 0)
+            {
+                return null; // No allocation needed
+            }
             size = (uint)((size + 7) & ~7); // Align size to 8 bytes
             ulong prev = 0;
             ulong current = FreeListHead;
@@ -123,6 +146,16 @@ namespace EarlyBird
             FreeListHead = block;
         }
 
+        public static void FreeSafe(IntPtr ptr)
+        {
+            if (ptr == IntPtr.Zero)
+            {
+                return; // Nothing to free
+            }
+
+            Free((void*)ptr);
+        }
+
         public static void MemSet(byte* dest, byte value, int count)
         {
             for (int i = 0; i < count; i++)
@@ -139,6 +172,22 @@ namespace EarlyBird
         }
 
         public static void MemCopy(uint* dest, uint* src, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                dest[i] = src[i];
+            }
+        }
+
+        public static void MemCopy(byte* dest, byte* src, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                dest[i] = src[i];
+            }
+        }
+
+        public static void MemCopy(char* dest, char* src, int count)
         {
             for (int i = 0; i < count; i++)
             {
@@ -181,10 +230,20 @@ namespace EarlyBird
     {
         public unsafe class Canvas
         {
+
             public static uint* Address;
+            private static uint* BackBuffer;
             public static uint Width;
             public static uint Height;
             public static uint Pitch;
+
+            public static void Initialize(uint* address, uint width, uint height, uint pitch)
+            {
+                Address = address;
+                Width = width;
+                Height = height;
+                Pitch = pitch;
+            }
 
             public static void DrawPixel(uint color, int x, int y)
             {
@@ -266,6 +325,390 @@ namespace EarlyBird
             {
                 PCScreenFont.PutString(text, x, y, color, Color.Transparent);
             }
+            
+            public static void DrawString(char* text, int x, int y, uint color)
+            {
+                PCScreenFont.PutString(text, x, y, color, Color.Transparent);
+            }
         }
     }
+}
+
+public static class RTC
+{
+    public enum TimeZone
+    {
+        UTC,
+        GMT,
+        EST, // Eastern Standard Time
+        CST, // Central Standard Time
+        MST, // Mountain Standard Time
+        PST, // Pacific Standard Time
+        IST, // Indian Standard Time
+        CET, // Central European Time
+        EET, // Eastern European Time
+        JST, // Japan Standard Time
+        AEST // Australian Eastern Standard Time
+    }
+
+    public enum DaylightSaving
+    {
+        None,
+        Standard,
+        Daylight
+    }
+
+    public static TimeZone CurrentTimeZone { get; set; } = TimeZone.UTC;
+    public static DaylightSaving CurrentDaylightSaving { get; set; } = DaylightSaving.None;
+
+    public static void Initialize()
+    {
+        // Initialize the RTC by selecting the control register and disabling NMI
+        IO.Write8(0x70, 0x0B); // Select register B
+        byte control = IO.Read8(0x71);
+        control &= 0x7F; // Clear bit 7 to disable NMI
+        IO.Write8(0x71, control); // Write back to register B
+    }
+    private static void WaitForUpdate()
+    {
+        IO.Write8(0x70, 0x0A); // Select register A
+        while ((IO.Read8(0x71) & 0x80) != 0) ; // Wait for update in progress
+    }
+
+    private static byte BCD2BIN(byte bcd)
+    {
+        return (byte)(((bcd >> 4) * 10) + (bcd & 0x0F));
+    }
+
+    public static (byte hours, byte minutes, byte seconds) GetAdjustedTime()
+    {
+        byte hours = GetHours();
+        byte minutes = GetMinutes();
+        byte seconds = GetSeconds();
+
+        int offset = GetTimeZoneOffset(CurrentTimeZone);
+
+        // Apply offset and wrap around 24-hour time
+        int adjustedHours = (hours + offset) % 24;
+        if (adjustedHours < 0)
+            adjustedHours += 24;
+
+        return ((byte)adjustedHours, minutes, seconds);
+    }
+
+    private static int GetTimeZoneOffset(TimeZone timeZone)
+    {
+        return timeZone switch
+        {
+            TimeZone.UTC => 0,
+            TimeZone.GMT => 0,
+            TimeZone.EST => -5,
+            TimeZone.CST => -6,
+            TimeZone.MST => -7,
+            TimeZone.PST => -8,
+            TimeZone.IST => 5, // Add 30 minutes later
+            TimeZone.CET => 1,
+            TimeZone.EET => 2,
+            TimeZone.JST => 9,
+            TimeZone.AEST => 10,
+            _ => 0,
+        };
+    }
+
+    private static int GetTimeZoneOffsetMinutes()
+    {
+        return CurrentTimeZone switch
+        {
+            TimeZone.UTC => 0,
+            TimeZone.GMT => 0,
+            TimeZone.EST => -300,
+            TimeZone.CST => -360,
+            TimeZone.MST => -420,
+            TimeZone.PST => -480,
+            TimeZone.IST => 330,  // India Standard Time = UTC+5:30
+            TimeZone.CET => 60,
+            TimeZone.EET => 120,
+            TimeZone.JST => 540,
+            TimeZone.AEST => 600,
+            _ => 0,
+        };
+    }
+
+
+    
+
+    public static byte GetSeconds()
+    {
+        WaitForUpdate();
+        IO.Write8(0x70, 0x00); // Select seconds register
+        byte rawSeconds = IO.Read8(0x71);
+        return BCD2BIN(rawSeconds);
+    }
+
+    public static byte GetHours()
+    {
+        WaitForUpdate();
+        IO.Write8(0x70, 0x04); // Hours
+        byte rawHour = IO.Read8(0x71);
+        IO.Write8(0x70, 0x02); // Minutes
+        byte rawMinute = IO.Read8(0x71);
+
+        int hour = BCD2BIN((byte)(rawHour & 0x3F));
+        int minute = BCD2BIN(rawMinute);
+
+        int totalMinutes = hour * 60 + minute;
+        totalMinutes += GetTimeZoneOffsetMinutes();
+
+        if (CurrentDaylightSaving == DaylightSaving.Daylight)
+            totalMinutes += 60;
+
+        if (totalMinutes < 0)
+            totalMinutes += 1440;
+        totalMinutes %= 1440;
+
+        return (byte)(totalMinutes / 60);
+    }
+
+    public static byte GetMinutes()
+    {
+        WaitForUpdate();
+        IO.Write8(0x70, 0x04); // Hours
+        byte rawHour = IO.Read8(0x71);
+        IO.Write8(0x70, 0x02); // Minutes
+        byte rawMinute = IO.Read8(0x71);
+
+        int hour = BCD2BIN((byte)(rawHour & 0x3F));
+        int minute = BCD2BIN(rawMinute);
+
+        int totalMinutes = hour * 60 + minute;
+        totalMinutes += GetTimeZoneOffsetMinutes();
+
+        if (CurrentDaylightSaving == DaylightSaving.Daylight)
+            totalMinutes += 60;
+
+        if (totalMinutes < 0)
+            totalMinutes += 1440;
+        totalMinutes %= 1440;
+
+        return (byte)(totalMinutes % 60);
+    }
+
+
+    public static byte GetDayOfWeek()
+    {
+        WaitForUpdate();
+        IO.Write8(0x70, 0x06); // Select day of week register
+        byte rawDayOfWeek = IO.Read8(0x71);
+        return (byte)(rawDayOfWeek & 0x07); // Mask to 0-6 (Sunday-Saturday)
+    }
+
+    public static byte GetDayOfMonth()
+    {
+        WaitForUpdate();
+        IO.Write8(0x70, 0x07); // Select day of month register
+        byte rawDayOfMonth = IO.Read8(0x71);
+        return BCD2BIN(rawDayOfMonth);
+    }
+
+    public static byte GetMonth()
+    {
+        WaitForUpdate();
+        IO.Write8(0x70, 0x08); // Select month register
+        byte rawMonth = IO.Read8(0x71);
+        return BCD2BIN((byte)(rawMonth & 0x1F)); // Mask to 1-12
+    }
+
+    public static ushort GetYear()
+    {
+        WaitForUpdate();
+        IO.Write8(0x70, 0x09); // Select year register
+        byte rawYear = IO.Read8(0x71);
+        return (ushort)(BCD2BIN(rawYear) + 2000); // Convert to full year (assuming 2000s)
+    }
+
+    public static string GetMonthName()
+    {
+        byte month = GetMonth();
+        switch (month)
+        {
+            case 1: return "January";
+            case 2: return "February";
+            case 3: return "March";
+            case 4: return "April";
+            case 5: return "May";
+            case 6: return "June";
+            case 7: return "July";
+            case 8: return "August";
+            case 9: return "September";
+            case 10: return "October";
+            case 11: return "November";
+            case 12: return "December";
+            default: return "Unknown";
+        }
+    }
+
+    public static string GetDayOfWeekName()
+    {
+        byte dayOfWeek = GetDayOfWeek();
+        switch (dayOfWeek)
+        {
+            case 0: return "Sunday";
+            case 1: return "Monday";
+            case 2: return "Tuesday";
+            case 3: return "Wednesday";
+            case 4: return "Thursday";
+            case 5: return "Friday";
+            case 6: return "Saturday";
+            default: return "Unknown";
+        }
+    }
+
+    public static unsafe char* GetTime()
+    {
+        byte hours = GetHours();
+        byte minutes = GetMinutes();
+        byte seconds = GetSeconds();
+
+        char* timeStr = (char*)MemoryOp.Alloc(9 * sizeof(char)); // "HH:MM:SS\0"
+
+        char* hourString = StrConversion.ToString(hours);
+        char* minuteString = StrConversion.ToString(minutes);
+        char* secondString = StrConversion.ToString(seconds);
+
+        int hourLen = (int)StringOp.StrLen(hourString);
+        int minuteLen = (int)StringOp.StrLen(minuteString);
+        int secondLen = (int)StringOp.StrLen(secondString);
+
+        // Optional: pad with leading zeros
+        if (hourLen == 1)
+        {
+            timeStr[0] = '0';
+            timeStr[1] = hourString[0];
+        }
+        else
+        {
+            MemoryOp.MemCopy(timeStr, hourString, hourLen);
+        }
+
+        timeStr[2] = ':';
+
+        if (minuteLen == 1)
+        {
+            timeStr[3] = '0';
+            timeStr[4] = minuteString[0];
+        }
+        else
+        {
+            MemoryOp.MemCopy(timeStr + 3, minuteString, minuteLen);
+        }
+
+        timeStr[5] = ':';
+
+        if (secondLen == 1)
+        {
+            timeStr[6] = '0';
+            timeStr[7] = secondString[0];
+        }
+        else
+        {
+            MemoryOp.MemCopy(timeStr + 6, secondString, secondLen);
+        }
+
+        timeStr[8] = '\0';
+
+        MemoryOp.Free(hourString);
+        MemoryOp.Free(minuteString);
+        MemoryOp.Free(secondString);
+
+        return timeStr;
+    }
+
+    public static unsafe char* GetDate()
+    {
+        byte day = GetDayOfMonth();
+        byte month = GetMonth();
+        ushort year = GetYear();
+
+        char* dateStr = (char*)MemoryOp.Alloc(11 * sizeof(char)); // "DD/MM/YYYY\0"
+
+        char* daystring = StrConversion.ToString(day);
+        char* monthstring = StrConversion.ToString(month);
+        char* yearstring = StrConversion.ToString(year);
+
+        int dayLen = (int)StringOp.StrLen(daystring);
+        int monthLen = (int)StringOp.StrLen(monthstring);
+        int yearLen = (int)StringOp.StrLen(yearstring);
+
+        // Optional: pad with leading zeros
+        if (dayLen == 1)
+        {
+            dateStr[0] = '0';
+            dateStr[1] = daystring[0];
+        }
+        else
+        {
+            MemoryOp.MemCopy(dateStr, daystring, dayLen);
+        }
+
+        dateStr[2] = '/';
+
+        if (monthLen == 1)
+        {
+            dateStr[3] = '0';
+            dateStr[4] = monthstring[0];
+        }
+        else
+        {
+            MemoryOp.MemCopy(dateStr + 3, monthstring, monthLen);
+        }
+
+        dateStr[5] = '/';
+
+        // Pad year with zeros if needed
+        for (int i = 0; i < 4 - yearLen; i++)
+        {
+            dateStr[6 + i] = '0';
+        }
+        MemoryOp.MemCopy(dateStr + 6 + (4 - yearLen), yearstring, yearLen);
+
+        dateStr[10] = '\0';
+
+        MemoryOp.Free(daystring);
+        MemoryOp.Free(monthstring);
+        MemoryOp.Free(yearstring);
+
+        return dateStr;
+    }
+
+    public static unsafe char* GetDateTime()
+    {
+        char* date = GetDate();
+        char* time = GetTime();
+
+        int dateLen = (int)StringOp.StrLen(date);
+        int timeLen = (int)StringOp.StrLen(time);
+
+        char* dateTimeStr = (char*)MemoryOp.Alloc((uint)((dateLen + timeLen + 2) * sizeof(char))); // "DD/MM/YYYY HH:MM:SS\0"
+
+        MemoryOp.MemCopy(dateTimeStr, date, dateLen);
+        dateTimeStr[dateLen] = ' ';
+        MemoryOp.MemCopy(dateTimeStr + dateLen + 1, time, timeLen);
+        dateTimeStr[dateLen + 1 + timeLen] = '\0';
+
+        MemoryOp.Free(date);
+        MemoryOp.Free(time);
+
+        return dateTimeStr;
+    }
+
+    public static void SetTimeZone(TimeZone timeZone)
+    {
+        CurrentTimeZone = timeZone;
+    }
+
+    public static void SetDaylightSaving(DaylightSaving daylightSaving)
+    {
+        CurrentDaylightSaving = daylightSaving;
+    }
+
 }
