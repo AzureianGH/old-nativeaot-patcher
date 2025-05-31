@@ -46,14 +46,22 @@ kmain:
     call kmainCSharp
 
 global RhpCheckedAssignRef
-global RhpAssignRef
+global RhpThrowEx
+
+extern ThrowExProper ; rdi = exception object
+extern ThrowExImproper ; rdi = exception object
+
 
 RhpCheckedAssignRef:
     mov [rdi], rsi
     ret
 
-RhpAssignRef:
-    call RhpCheckedAssignRef
-    ret
-
     
+RhpThrowEx:
+    cmp rdi, 0
+    je .RHPNon_proper
+    call ThrowExProper
+    ret
+    .RHPNon_proper:
+    call ThrowExImproper
+    ret

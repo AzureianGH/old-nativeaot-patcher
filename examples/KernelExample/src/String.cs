@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using EarlyBird.Conversion;
 
 namespace EarlyBird.Conversion
@@ -188,7 +189,53 @@ namespace EarlyBird.String
             return result;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        private class LikeString
+        {
+            private const int POINTER_SIZE = 8;
+
+            internal const int FIRST_CHAR_OFFSET = 12;
+
+            public int _stringLength;
+
+            public char _firstChar;
+
+            public int Length => _stringLength;
+
+            public LikeString(int length)
+            {
+                _stringLength = length;
+                _firstChar = '\0'; // Initialize first character
+            }
+
+            public LikeString(char firstChar, int length)
+            {
+                _stringLength = length;
+                _firstChar = firstChar; // Initialize first character
+            }
+            public char this[int index]
+            {
+                get
+                {
+                    if (index < 0 || index >= _stringLength)
+                    {
+                        throw new IndexOutOfRangeException("Index out of range");
+                    }
+                    return Unsafe.Add(ref _firstChar, index);
+                }
+                set
+                {
+                    if (index < 0 || index >= _stringLength)
+                    {
+                        throw new IndexOutOfRangeException("Index out of range");
+                    }
+                    Unsafe.Add(ref _firstChar, index) = value;
+                }
+            }
+        }
+
         
+
     }
 
     public static unsafe class StringExtensions
@@ -197,9 +244,12 @@ namespace EarlyBird.String
         public static char[] ToCharArray(this string str)
         {
             char[] result = new char[str.Length];
-            for (int i = 0; i < str.Length; i++)
+            fixed (char* strPtr = str)
             {
-                result[i] = str.GetCharAt(i);
+                for (int i = 0; i < str.Length; i++)
+                {
+                    result[i] = strPtr[i];
+                }
             }
             return result;
         }
@@ -265,4 +315,13 @@ namespace EarlyBird.String
         }
     }
 
+}
+
+namespace System
+{
+    public partial class String
+    {
+        //ConCat
+        
+    }
 }

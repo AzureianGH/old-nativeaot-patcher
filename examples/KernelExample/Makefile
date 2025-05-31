@@ -1,5 +1,5 @@
 DOTNET = dotnet
-ARGS = build
+ARGS = build -v diag
 CSPROJ = Kernel.csproj
 
 QEMU = qemu-system-x86_64
@@ -17,7 +17,7 @@ win:
 # Run the kernel (requires build)
 win-run: win
 	$(QEMU) $(QEMU_ARGS)
-win-run-d: win-run
+win-run-d: win
 	$(QEMU) $(QEMU_ARGS) -s -S
 
 win-verbose:

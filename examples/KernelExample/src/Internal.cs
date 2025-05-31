@@ -1,8 +1,10 @@
 using System;
+using System.EarlyBird.Internal.Rhp;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using EarlyBird;
+using EarlyBird.Internal;
 using Internal.Runtime;
 using static EarlyBird.Graphics;
 
@@ -34,30 +36,99 @@ namespace System
         class RhpExports
         {
             [MethodImpl(MethodImplOptions.NoInlining)]
-            [RuntimeExport("RhpThrowEx")]
-            public static void ThrowEx(Exception pException)
+            [RuntimeExport("ThrowExProper")]
+            public static unsafe void ThrowExProper(Exception pException)
             {
-                Canvas.ClearScreen(Color.Black);
-                Canvas.DrawString("Exception Occured! Halted.", 0, 0, Color.Red);
+                
+                Canvas.DrawString(pException.Message, 0, 0, Color.Red);
+                Serial.WriteString("An exception has occurred. Halting execution.\r\n");
+                Serial.WriteString("Exception: ");
+                Serial.WriteString(pException.Message);
+                Canvas.DrawString("HALTED", 0, (int)Canvas.Height - 28, Color.Red);
                 while (true) ;
             }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            [RuntimeExport("ThrowExImproper")]
+            public static unsafe void ThrowExImproper(Exception pException)
+            {
+                Canvas.DrawString("An unknown exception has occurred.", 0, 0, Color.Red);
+                Serial.WriteString("An unknown exception has occurred. Halting execution.\r\n");
+                Canvas.DrawString("HALTED", 0, (int)Canvas.Height - 28, Color.Red);
+                while (true) ;
+            }
+
             [MethodImpl(MethodImplOptions.NoInlining)]
             [RuntimeExport("RhpNewFast")]
             public static unsafe IntPtr RhpNewFast(MethodTable* pEEType)
             {
-
-                // Allocate memory for the object based on the EEType size.
+                // Allocate memory for the object based on its EEType size
                 IntPtr objectPtr = (IntPtr)MemoryOp.Alloc(pEEType->_uBaseSize);
-                // Initialize the object (if necessary, depending on EEType).
+
+                // Set the MethodTable (vtable pointer) at the beginning of the object
+                // Assuming object layout: [MethodTable*][object fields...]
+                *(MethodTable**)objectPtr = pEEType;
+
                 return objectPtr;
             }
             [MethodImpl(MethodImplOptions.NoInlining)]
             [RuntimeExport("RhpNewArray")]
-            public static unsafe IntPtr NewArray(IntPtr eeTypePtr, int length)
+            public static unsafe Array* NewArray(MethodTable* pEEType, int num)
             {
-                return IntPtr.Zero;
+                if (num < 0)
+                    throw new ArgumentOutOfRangeException("Array size cannot be negative.");
+
+                // Calculate the size of the array
+                int size = (int)(pEEType->_uBaseSize * num);
+
+                // Allocate memory for the array
+                Array* arrayPtr = (Array*)MemoryOp.Alloc((uint)size);
+
+                // Set the MethodTable (vtable pointer) at the beginning of the array
+                *(MethodTable**)arrayPtr = pEEType;
+
+                // Initialize the length of the array using _numComponents
+                arrayPtr->_numComponents = num;
+
+                return arrayPtr;
             }
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            [RuntimeExport("RhpAssignRef")]
+            public static unsafe void AssignRef(ref object destination, object source)
+            {
+
+                destination = source;
+            }
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            [RuntimeExport("RhUnbox2")]
+            public static unsafe ref byte RhUnbox2(MethodTable* pUnboxToEEType, object obj)
+            {
+                return ref obj.GetRawData();
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            [RuntimeExport("RhNewString")]
+            public static unsafe string* RhNewString_Lower(MethodTable* pArrayEEType, int numElements)
+            {
+                return (string*)NewArray(pArrayEEType, numElements);
+            }
+
+            [MethodImpl(MethodImplOptions.InternalCall)]
+            [RuntimeImport("*", "RhNewString")]
+            public static unsafe extern string RhNewString(MethodTable* pArrayEEType, int numElements);
+            
         }
+    }
+
+    public static class AZRuntimeHelpers
+    {
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        [RuntimeExport("_FastAllocateString")]
+        public static unsafe string FastAllocateString(int length)
+        {
+            return RhpExports.RhNewString(MethodTable.Of<string>(), length);
+        }
+
     }
 
     public readonly ref struct Span<T>
@@ -144,36 +215,7 @@ namespace System
         }
     }
 
-    public class VException : Exception
-    {
-        public string _exceptionString;
-
-        public string Message => _exceptionString ?? "An error occurred.";
-        public string StackTrace => "Stack trace is not available in this environment.";
-        public string HelpLink => "No help link available.";
-        public string Source => "No source information available.";
-        public string TargetSite => "No target site information available.";
-
-        public VException InnerException { get; set; }
-        public string HResult => "HResult is not available in this environment.";
-
-        public VException(string message, VException innerException = null)
-        {
-            _exceptionString = message;
-            InnerException = innerException;
-        }
-
-        public VException()
-        {
-        }
-
-        public VException(string str)
-        {
-            _exceptionString = str;
-        }
-    }
-
-    public class IndexOutOfRangeException : VException
+    public class IndexOutOfRangeException : Exception
     {
         public IndexOutOfRangeException() : base("Index was outside the bounds of the array.")
         {
@@ -183,12 +225,9 @@ namespace System
         {
         }
 
-        public IndexOutOfRangeException(string message, VException innerException) : base(message, innerException)
-        {
-        }
     }
 
-    public class NullReferenceException : VException
+    public class NullReferenceException : Exception
     {
         public NullReferenceException() : base("Object reference not set to an instance of an object.")
         {
@@ -198,12 +237,9 @@ namespace System
         {
         }
 
-        public NullReferenceException(string message, VException innerException) : base(message, innerException)
-        {
-        }
     }
 
-    public class ArgumentOutOfRangeException : VException
+    public class ArgumentOutOfRangeException : Exception
     {
         public ArgumentOutOfRangeException() : base("Specified argument was out of the range of valid values.")
         {
@@ -213,9 +249,6 @@ namespace System
         {
         }
 
-        public ArgumentOutOfRangeException(string message, VException innerException) : base(message, innerException)
-        {
-        }
     }
 
     public struct ValueTuple<T1>

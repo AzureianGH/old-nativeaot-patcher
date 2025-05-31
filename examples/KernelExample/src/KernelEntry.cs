@@ -1,4 +1,5 @@
 using System;
+using System.EarlyBird.Internal.Rhp;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 using Cosmos.Boot.Limine;
@@ -6,6 +7,7 @@ using EarlyBird;
 using EarlyBird.Conversion;
 using EarlyBird.Internal;
 using EarlyBird.String;
+using Internal.Runtime;
 using static EarlyBird.Graphics;
 
 unsafe class Program
@@ -19,34 +21,6 @@ unsafe class Program
     {
         return 0xAA;
     }
-
-
-
-    class TestClass
-    {
-        public int x;
-        public TestClass()
-        {
-            x = 0;
-        }
-    }
-    static TestClass obj;
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    static int TestAllocation()
-    {
-        obj = new TestClass();  // This should call RhpNewFast internally
-        obj.x = 42;
-        return obj.x; // Return the value to ensure the object is not optimized away
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    static ushort TestMethod(byte a, byte b)
-    {
-       return (ushort)(a + b);
-    }
-
-    [RuntimeImport("RhpAssignRef")]
-    static extern void RhpAssignRef(void* target, object value);
 
     [RuntimeExport("kmainCSharp")]
     static void Main()
@@ -62,39 +36,17 @@ unsafe class Program
         char* currentDate = RTC.GetDate();
         char* currentTime = RTC.GetTime();
         debugCatch();
-        // if (TestAllocation() == 42)
-        // {
-        //     Serial.WriteString("Test allocation successful.");
-        // }
-        // else
-        // {
-        //     Serial.WriteString("Test allocation failed.");
-        // }
 
-        //throw new VException("This is a test exception");
-        // fixed (char* p = test)
-        // {
+        throw new IndexOutOfRangeException();
 
-        //     Span<char> testSpan = new Span<char>();
-        //     debugCatch();
-        //     testSpan = new Span<char>(p, test.Length);
-        //     char a = testSpan[0];
-        //     Canvas.DrawChar(a, 0, 0, Color.White);
+        string meow = "Hello, Cosmos!";
+        char[] chararray = meow.ToCharArray();
 
-        // }
-        int here = 0;
-        object obj = (object)here;
-        int there = 5;
-        RhpAssignRef(&obj, there);
-        if ((int)obj == 5)
+
+        for (int i = 0; i < chararray.Length; i++)
         {
-            Serial.WriteString("RhpAssignRef test successful.");
+            Serial.ComWrite((byte)chararray[i]);
         }
-        else
-        {
-            Serial.WriteString("RhpAssignRef test failed.");
-        }
-
 
         while (true)
         {
