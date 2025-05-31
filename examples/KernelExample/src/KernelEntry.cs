@@ -20,7 +20,11 @@ unsafe class Program
     public static int debugCatch()
     {
         return 0xAA;
-    }
+    }    // Internal calls to C functions
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    [RuntimeImport("*", "test_gcc_function")]
+    public static extern uint TestGccFunction();
+    
 
     [RuntimeExport("kmainCSharp")]
     static void Main()
@@ -31,33 +35,22 @@ unsafe class Program
         Serial.ComInit();
         RTC.Initialize();
         RTC.SetTimeZone(RTC.TimeZone.EST);
-        RTC.SetDaylightSaving(RTC.DaylightSaving.Daylight);
-
-        char* currentDate = RTC.GetDate();
+        RTC.SetDaylightSaving(RTC.DaylightSaving.Daylight);        char* currentDate = RTC.GetDate();
         char* currentTime = RTC.GetTime();
         debugCatch();
 
-        throw new IndexOutOfRangeException();
-
-        string meow = "Hello, Cosmos!";
-        char[] chararray = meow.ToCharArray();
-
-
-        for (int i = 0; i < chararray.Length; i++)
+        // Test our GCC compiled function
+        uint testResult = TestGccFunction();
+        if (testResult == 12345)
         {
-            Serial.ComWrite((byte)chararray[i]);
+            Canvas.DrawString("GCC Integration Success!", 0, 0, Color.Green);
+        }
+        else
+        {
+            Canvas.DrawString("GCC Integration Failed!", 0, 0, Color.Red);
         }
 
-        while (true)
-        {
-            currentTime = RTC.GetTime();
-            Canvas.ClearScreen(Color.Black);
-            Canvas.DrawString(currentTime, 0, 0, Color.White);
-            Canvas.DrawString(currentDate, 0, 28, Color.White);
-
-
-            MemoryOp.Free(currentTime);
-            for (ulong i = 0; i < 0xFFFFFF; i++) ;
-        }
+        while (true) ;
+        
     }
 }

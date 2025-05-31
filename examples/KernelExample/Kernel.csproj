@@ -21,11 +21,15 @@
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
     <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
   </PropertyGroup>
-
   <!-- Add any folder(s) where *.asm files exist -->
   <ItemGroup>
     <AsmSearchPath Include="./src/Asm/" />
     <!-- You can also do: <AsmFiles Include="/path/to/file.asm" /> -->
+  </ItemGroup>
+    <!-- Add any folder(s) where C files exist to compile with GCC -->
+  <ItemGroup>
+    <GCCProject Include="./src/C/" />
+    <!-- Each directory produces separate .o object files that will be linked into the final ELF -->
   </ItemGroup>
  
   <ItemGroup>

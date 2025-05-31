@@ -1,4 +1,14 @@
 # Build all projects in Release configuration
+
+# Check if x86_64-elf-gcc is installed
+$gccExists = $null -ne (Get-Command "x86_64-elf-gcc" -ErrorAction SilentlyContinue)
+if (-not $gccExists) {
+    Write-Host "⚠️ Warning: x86_64-elf-gcc is not found in PATH." -ForegroundColor Yellow
+    Write-Host "The GCC.Build package requires x86_64-elf-gcc to be installed for kernel development." -ForegroundColor Yellow
+    Write-Host "Please install x86_64-elf-gcc before using C code in kernel projects." -ForegroundColor Yellow
+    Write-Host "See src\Cosmos.GCC.Build\README.md for installation instructions." -ForegroundColor Cyan
+}
+
 $projects = @(
     'src\Cosmos.API\Cosmos.API.csproj',
     'src\Cosmos.Patcher.Build\Cosmos.Patcher.Build.csproj',
@@ -6,7 +16,8 @@ $projects = @(
     'src\Cosmos.Common.Build\Cosmos.Common.Build.csproj',
     'src\Cosmos.Ilc.Build\Cosmos.Ilc.Build.csproj',
     'src\Cosmos.Asm.Build\Cosmos.Asm.Build.csproj',
-    'src\Cosmos.Patcher.Analyzer.Package\Cosmos.Patcher.Analyzer.Package.csproj'
+    'src\Cosmos.GCC.Build\Cosmos.GCC.Build.csproj',
+    'src\Cosmos.Patcher.Analyzer.Package\Cosmos.Patcher.Analyzer.Package.csproj',
     'src\Cosmos.Sdk\Cosmos.Sdk.csproj'
 )
 foreach ($proj in $projects) {

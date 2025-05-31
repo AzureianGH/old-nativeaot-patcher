@@ -1,16 +1,17 @@
-<Project>
-  <PropertyGroup>
+<Project>  <PropertyGroup>
     <UsingCosmosSdk>true</UsingCosmosSdk>
-    <!-- Ilc  -->
+    <!-- Build dependency order -->
     <IlcDependsOn>RunPatcher;$(IlcDependsOn)</IlcDependsOn>
-    <LinkTargetDependsOn>CompileWithIlc;BuildYasm;$(LinkTargetDependsOn)</LinkTargetDependsOn>
+    <BuildYasmDependsOn>CompileWithIlc;$(BuildYasmDependsOn)</BuildYasmDependsOn>
+    <BuildGCCDependsOn>BuildYasm;$(BuildGCCDependsOn)</BuildGCCDependsOn>
+    <LinkTargetDependsOn>CompileWithIlc;BuildYasm;BuildGCC;$(LinkTargetDependsOn)</LinkTargetDependsOn>
     <CoreCompileDependsOn>$(CoreCompileDependsOn);CustomizeReferences</CoreCompileDependsOn>
   </PropertyGroup>
-  
-  <ItemGroup>
+    <ItemGroup>
     <PackageReference Include="Cosmos.Common.Build" Version="3.0.0"/>
     <PackageReference Include="Cosmos.Ilc.Build" Version="1.0.0"/>
     <PackageReference Include="Cosmos.Asm.Build" Version="3.0.0"/>
+    <PackageReference Include="Cosmos.GCC.Build" Version="3.0.0"/>
     <PackageReference Include="Cosmos.Patcher.Build" Version="3.0.0"/>
   </ItemGroup>
 </Project>

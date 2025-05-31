@@ -1,5 +1,5 @@
 DOTNET = dotnet
-ARGS = build -v diag
+ARGS = build
 CSPROJ = Kernel.csproj
 
 QEMU = qemu-system-x86_64
@@ -11,6 +11,7 @@ all: build run
 # Build the kernel
 win:
 	rm -rf ..\..\artifacts\obj\Kernel\debug\cosmos\asm
+	rm -rf ..\..\artifacts\obj\Kernel\debug\cosmos\cobj
 	$(DOTNET) $(ARGS) $(CSPROJ)
 	
 
