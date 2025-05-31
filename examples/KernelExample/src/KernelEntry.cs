@@ -20,11 +20,12 @@ unsafe class Program
     public static int debugCatch()
     {
         return 0xAA;
-    }    // Internal calls to C functions
+    }
+
+    // Internal call
     [MethodImpl(MethodImplOptions.InternalCall)]
     [RuntimeImport("*", "test_gcc_function")]
-    public static extern uint TestGccFunction();
-    
+    public static extern void TestGccFunction();
 
     [RuntimeExport("kmainCSharp")]
     static void Main()
@@ -35,20 +36,13 @@ unsafe class Program
         Serial.ComInit();
         RTC.Initialize();
         RTC.SetTimeZone(RTC.TimeZone.EST);
-        RTC.SetDaylightSaving(RTC.DaylightSaving.Daylight);        char* currentDate = RTC.GetDate();
+        RTC.SetDaylightSaving(RTC.DaylightSaving.Daylight);
+
+        char* currentDate = RTC.GetDate();
         char* currentTime = RTC.GetTime();
         debugCatch();
 
-        // Test our GCC compiled function
-        uint testResult = TestGccFunction();
-        if (testResult == 12345)
-        {
-            Canvas.DrawString("GCC Integration Success!", 0, 0, Color.Green);
-        }
-        else
-        {
-            Canvas.DrawString("GCC Integration Failed!", 0, 0, Color.Red);
-        }
+        TestGccFunction();
 
         while (true) ;
         

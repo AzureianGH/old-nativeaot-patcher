@@ -1,4 +1,5 @@
 using System;
+using System.Runtime;
 using EarlyBird;
 using EarlyBird.Conversion;
 using EarlyBird.PSF;
@@ -86,6 +87,7 @@ namespace EarlyBird
             return new IntPtr(ptr);
         }
 
+        [RuntimeExport("MemoryOp_Alloc")]
         public static void* Alloc(uint size)
         {
             if (size == 0)
@@ -311,22 +313,26 @@ namespace EarlyBird
                 }
             }
 
+            [RuntimeExport("Canvas_ClearScreen")]
             public static void ClearScreen(uint color)
             {
-                MemoryOp.MemSet(Address, color, (int)((Pitch / 4) * Height));
+                MemoryOp.MemSet(Address, color, (int)(Pitch / 4 * Height));
             }
 
+            [RuntimeExport("Canvas_DrawChar")]
             public static void DrawChar(char c, int x, int y, uint color)
             {
                 PCScreenFont.PutChar(c, x, y, color, Color.Transparent);
             }
 
+            [RuntimeExport("Canvas_DrawString_Managed")]
             public static void DrawString(string text, int x, int y, uint color)
             {
                 PCScreenFont.PutString(text, x, y, color, Color.Transparent);
             }
             
-            public static void DrawString(char* text, int x, int y, uint color)
+            [RuntimeExport("Canvas_DrawString_Unmanaged")]
+            public static void DrawString(sbyte* text, int x, int y, uint color)
             {
                 PCScreenFont.PutString(text, x, y, color, Color.Transparent);
             }

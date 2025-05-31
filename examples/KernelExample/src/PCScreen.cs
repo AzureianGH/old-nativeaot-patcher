@@ -73,11 +73,11 @@ namespace EarlyBird.PSF
             }
         }
 
-        public static void PutString(char* str, int x, int y, uint fg, uint bg)
+        public static void PutString(sbyte* str, int x, int y, uint fg, uint bg)
         {
             for (int i = 0; str[i] != '\0'; i++)
             {
-                PutChar(str[i], x + (i * 16), y, fg, bg);
+                PutChar((ushort)str[i], x + (i * 16), y, fg, bg);
             }
         }
 
