@@ -25,7 +25,7 @@ unsafe class Program
     // Internal call
     [MethodImpl(MethodImplOptions.InternalCall)]
     [RuntimeImport("*", "test_gcc_function")]
-    public static extern void TestGccFunction();
+    public static extern void TestGccFunction(string str);
 
     [RuntimeExport("kmainCSharp")]
     static void Main()
@@ -42,7 +42,7 @@ unsafe class Program
         char* currentTime = RTC.GetTime();
         debugCatch();
 
-        TestGccFunction();
+        TestGccFunction("Hello, World!");
 
         while (true) ;
         
