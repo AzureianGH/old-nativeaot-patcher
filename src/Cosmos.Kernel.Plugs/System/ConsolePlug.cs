@@ -19,5 +19,11 @@ public class ConsolePlug
     public static void WriteLine(char value) => KernelConsole.WriteLine(value);
 
     [PlugMember]
+    public static void Write(uint value) => KernelConsole.Write(value);
+
+    [PlugMember]
+    public static void WriteLine(uint value) => KernelConsole.WriteLine(value);
+
+    [PlugMember]
     public static void WriteLine() => KernelConsole.WriteLine();
 }

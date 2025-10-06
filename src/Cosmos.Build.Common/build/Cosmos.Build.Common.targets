@@ -74,7 +74,7 @@
 
     <!-- Download and build Limine (only if not already there) -->
     <Exec Command="git clone https://github.com/limine-bootloader/limine.git --branch=v9.x-binary --depth=1 $(CosmosIntermediateOutputPath)/limine" IgnoreExitCode="true" />
-    <Exec Command="make -C $(CosmosIntermediateOutputPath)/limine CC=clang" />
+    <Exec Command="make -C $(CosmosIntermediateOutputPath)/limine CC=cc" />
 
     <!-- Copy built ELF and Limine config to ISO root -->
     <Copy SourceFiles="$(ElfBinary)" DestinationFolder="$(IsoRoot)/boot/" />

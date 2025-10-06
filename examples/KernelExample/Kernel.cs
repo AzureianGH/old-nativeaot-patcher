@@ -9,7 +9,9 @@ using Cosmos.Kernel.Core.Runtime;
 using Cosmos.Kernel.HAL;
 using Cosmos.Kernel.System.IO;
 using PlatformArchitecture = Cosmos.Build.API.Enum.PlatformArchitecture;
-
+using Cosmos.Kernel.System.Graphics;
+using Cosmos.Kernel.System.Graphics.Fonts;
+using Cosmos.Kernel.System.ACPI;
 internal unsafe static partial class Program
 {
 
@@ -21,26 +23,26 @@ internal unsafe static partial class Program
     [UnmanagedCallersOnly(EntryPoint = "__managed__Main")]
     private static void KernelMain() => Main();
 
+
     private static void Main()
     {
-        Native.Debug.BreakpointSoft();
+        KernelConsole.Initialize();
 
-        var gccString = testGCC();
-        Console.WriteLine(gccString);
+        bool acpiInit = ACPI.Initialize();
+        if (acpiInit)
+        {
+            Console.WriteLine("ACPI initialized successfully.");
 
-        // Uncomment to use hard breakpoint (must use Continue, not Step Over)
-        // Console.WriteLine("Hard breakpoint (use Continue to resume)...");
-        // Native.Debug.Breakpoint();  // INT3 - stops execution until Continue
-        // Console.WriteLine("Hard breakpoint passed.");
+            ACPI.DumpTables(true);
+        }
+        else
+        {
+            Console.WriteLine("ACPI initialization failed.");
+        }
 
-        char[] testChars = new char[] { 'R', 'h', 'p' };
-        string testString = new string(testChars);
-        Console.WriteLine(testString);
-        Serial.WriteString(testString + "\n");
+        Console.WriteLine("Hello Cosmos World from x64!");
 
-        // Test exception handling
-        Console.WriteLine("Testing exception handling...");
-        throw new Exception("Test exception from kernel!");
+        
 
         while (true) ;
     }

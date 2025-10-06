@@ -3,7 +3,7 @@ using Cosmos.Kernel.System.Conversion;
 
 namespace Cosmos.Kernel.System.Graphics.Fonts;
 
-public static unsafe class PCScreenFont
+public unsafe class PCScreenFont : FontFormat
 {
     public static class Default
     {
@@ -28,34 +28,6 @@ public static unsafe class PCScreenFont
     public static ushort Magic = 0x0436;
     public static uint PSFFontMagic = 0x864ab572;
 
-    private static void EnsureInitialized()
-    {
-        if (!Initialized)
-        {
-            byte* fontData = Base64.Decode(Default.GetUnmanagedFontData(), (uint)Default.Size);
-            Init((byte*)Graphics.Canvas.Address, (int)Graphics.Canvas.Pitch, fontData);
-            Initialized = true;
-        }
-    }
-
-    public static int CharWidth
-    {
-        get
-        {
-            EnsureInitialized();
-            return (int)((PSF_Font*)FontData)->Width;
-        }
-    }
-
-    public static int CharHeight
-    {
-        get
-        {
-            EnsureInitialized();
-            return (int)((PSF_Font*)FontData)->Height;
-        }
-    }
-
     public struct PSF_Header
     {
         public ushort Magic;
@@ -75,6 +47,9 @@ public static unsafe class PCScreenFont
         public uint Width; // Width in pixels
     }
 
+    public override int CharHeight => (int)((PSF_Font*)FontData)->Height;
+    public override int CharWidth => (int)((PSF_Font*)FontData)->Width;
+
     // You can initialize things here
     public static void Init(byte* fb, int scanline, byte* fontData)
     {
@@ -91,48 +66,51 @@ public static unsafe class PCScreenFont
             FontData[i] = fontFile[i];
     }
 
-    public static void PutString(string str, int x, int y, uint fg, uint bg)
+    public override void PutString(string str, int x, int y, uint fg, uint bg)
     {
-        int charWidth = CharWidth;
         fixed (char* ptr = str)
         {
             for (int i = 0; i < str.Length; i++)
             {
-                PutChar(ptr[i], x + i * charWidth, y, fg, bg);
+                PutChar(ptr[i], x + (i * 16), y, fg, bg);
             }
         }
     }
 
-    public static void PutString(char* str, int x, int y, uint fg, uint bg)
+    public override void PutString(char* str, int x, int y, uint fg, uint bg)
     {
-        int charWidth = CharWidth;
         for (int i = 0; str[i] != 0; i++)
         {
-            PutChar(str[i], x + i * charWidth, y, fg, bg);
+            PutChar(str[i], x + (i * 16), y, fg, bg);
         }
     }
 
-    public static void PutChar(
-        ushort c, int cx, int cy,
-        uint fg, uint bg)
+    public override void PutChar(char c, int x, int y, uint fgcolor, uint bgcolor)
     {
 
-        EnsureInitialized();
+        if (!Initialized)
+        {
+            byte* fontData = Base64.Decode(Default.GetUnmanagedFontData(), (uint)Default.Size);
+
+            Init((byte*)Graphics.Canvas.Address, (int)Graphics.Canvas.Pitch, fontData);
+
+            Initialized = true;
+        }
 
         PSF_Font* font = (PSF_Font*)FontData;
         int bytesPerLine = ((int)font->Width + 7) / 8;
 
         // Ensure the character is within the ASCII range (0-127)
-        c = (ushort)(c & 0x7F);
+        c = (char)(c & 0x7F);
 
         byte* glyph = FontData
             + font->HeaderSize
-            + (c < font->NumGlyph ? c : 0) * font->BytesPerGlyph;
+            + ((c < font->NumGlyph ? c : 0) * font->BytesPerGlyph);
 
-        int offs = (int)(cy * font->Height * Scanline +
-                   cx * (int)font->Width * sizeof(uint));
+        int offs = (int)((y * font->Height * Scanline) +
+                   (x * (int)font->Width * sizeof(uint)));
 
-        for (int y = 0; y < font->Height; y++)
+        for (int cy = 0; cy < font->Height; cy++)
         {
             int line = offs;
 
@@ -144,17 +122,17 @@ public static unsafe class PCScreenFont
 
             int mask = 1 << ((int)font->Width - 1);
 
-            for (int x = 0; x < font->Width; x++)
+            for (int cx = 0; cx < font->Width; cx++)
             {
 
 
                 if ((rowData & mask) != 0)
                 {
-                    Graphics.Canvas.DrawPixel(fg, cx + x, cy + y);
+                    Graphics.Canvas.DrawPixel(fgcolor, x + cx, y + cy);
                 }
-                else if ((bg & 0xFF000000) != 0)
+                else if ((bgcolor & 0xFF000000) != 0)
                 {
-                    Graphics.Canvas.DrawPixel(bg, cx + x, cy + y);
+                    Graphics.Canvas.DrawPixel(bgcolor, x + cx, y + cy);
                 }
 
                 mask >>= 1;
@@ -165,4 +143,3 @@ public static unsafe class PCScreenFont
         }
     }
 }
-

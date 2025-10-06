@@ -27,6 +27,21 @@ public readonly unsafe struct LimineFramebufferResponse
     public readonly LimineFramebuffer** Framebuffers;
 }
 
+[StructLayout(LayoutKind.Sequential)]
+public readonly unsafe struct LimineRSDPRequest()
+{
+    public readonly LimineID ID = new(0xc5e77b6b397e7b43, 0x27637845accdcf3c);
+    public readonly ulong Revision = 0;
+    public readonly LimineRSDPResponse* Response;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public readonly unsafe struct LimineRSDPResponse
+{
+    public readonly ulong Revision;
+    public readonly ulong Address;
+}
+
 public enum LimineFbMemoryModel : byte
 {
     Rgb = 1

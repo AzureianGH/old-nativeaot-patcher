@@ -79,6 +79,11 @@ public static class KernelConsole
         }
     }
 
+    public static void Write(uint value)
+    {
+        Write(value.ToString());
+    }
+
     public static void WriteLine(string text)
     {
         Write(text);
@@ -88,6 +93,12 @@ public static class KernelConsole
     public static void WriteLine(char c)
     {
         Write(c);
+        NewLine();
+    }
+
+    public static void WriteLine(uint value)
+    {
+        Write(value);
         NewLine();
     }
 
