@@ -7,15 +7,14 @@ using Cosmos.Kernel.Boot.Limine;
 using Cosmos.Kernel.Core.Memory;
 using Cosmos.Kernel.Core.Runtime;
 using Cosmos.Kernel.HAL;
-using Cosmos.Kernel.System.IO;
-using PlatformArchitecture = Cosmos.Build.API.Enum.PlatformArchitecture;
+using Cosmos.Kernel.System.ACPI;
 using Cosmos.Kernel.System.Graphics;
 using Cosmos.Kernel.System.Graphics.Fonts;
-using Cosmos.Kernel.System.ACPI;
-internal unsafe static partial class Program
+using Cosmos.Kernel.System.IO;
+using PlatformArchitecture = Cosmos.Build.API.Enum.PlatformArchitecture;
+using Cosmos.Kernel.System.PCI;
+internal static unsafe partial class Program
 {
-
-
     [LibraryImport("test", EntryPoint = "testGCC")]
     [return: MarshalUsing(typeof(SimpleStringMarshaler))]
     public static unsafe partial string testGCC();
@@ -23,17 +22,24 @@ internal unsafe static partial class Program
     [UnmanagedCallersOnly(EntryPoint = "__managed__Main")]
     private static void KernelMain() => Main();
 
-
     private static void Main()
     {
         KernelConsole.Initialize();
 
-        bool acpiInit = ACPI.Initialize();
+        bool acpiInit = ACPI.Initialize(true);
         if (acpiInit)
         {
             Console.WriteLine("ACPI initialized successfully.");
 
-            ACPI.DumpTables(true);
+            bool pcieInit = PCIe.Initialize(true);
+            if (pcieInit)
+            {
+                Console.WriteLine("PCIe initialized successfully.");
+            }
+            else
+            {
+                Console.WriteLine("PCIe initialization failed.");
+            }
         }
         else
         {
@@ -42,16 +48,13 @@ internal unsafe static partial class Program
 
         Console.WriteLine("Hello Cosmos World from x64!");
 
-        
-
-        while (true) ;
+        while (true);
     }
 }
 
 [CustomMarshaller(typeof(string), MarshalMode.Default, typeof(SimpleStringMarshaler))]
 internal static unsafe class SimpleStringMarshaler
 {
-
     public static string ConvertToManaged(char* unmanaged)
     {
         string result = new(unmanaged);

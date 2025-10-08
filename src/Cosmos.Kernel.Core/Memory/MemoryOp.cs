@@ -9,6 +9,22 @@ public static unsafe class MemoryOp
 
     public static void Free(void* ptr) => Heap.Heap.Free(ptr);
 
+    public static void* ReAlloc(void* ptr, uint size)
+    {
+        // First, allocate new block
+        void* newPtr = Alloc(size);
+        if (newPtr == null)
+        {
+            return null; // Allocation failed
+        }
+        // Copy data from old block to new block
+
+        MemCopy((byte*)newPtr, (byte*)ptr, (int)size);
+        // Free old block
+        Free(ptr);
+        return newPtr;
+    }
+
     public static void MemSet(byte* dest, byte value, int count)
     {
         for (int i = 0; i < count; i++)

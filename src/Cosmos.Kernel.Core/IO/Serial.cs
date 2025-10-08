@@ -8,7 +8,7 @@ public static class Serial
 
     private static void WaitForTransmitBufferEmpty()
     {
-        while ((Native.IO.Read8((ushort)(COM1 + 5)) & 0x20) == 0) ;
+        while ((Native.IO.Read8((ushort)(COM1 + 5)) & 0x20) == 0);
     }
 
     public static void ComWrite(byte value)
