@@ -17,6 +17,7 @@ using Cosmos.Kernel.HAL.X64;
 using Cosmos.Kernel.HAL.X64.Devices.Clock;
 using Cosmos.Kernel.HAL.X64.Devices.Input;
 using Cosmos.Kernel.HAL.X64.Devices.Network;
+using Cosmos.Kernel.HAL.X64.Devices.Usb;
 using Cosmos.Kernel.HAL.X64.Devices.Timer;
 using Cosmos.Kernel.HAL.X64.Cpu;
 using Cosmos.Kernel.HAL.X64.Pci;
@@ -170,6 +171,33 @@ public class Kernel
         // Register keyboard IRQ handler (this also routes IRQ1 through APIC)
         Serial.WriteString("[KERNEL]   - Registering keyboard IRQ handler...\n");
         PS2Keyboard.RegisterIRQHandler();
+
+        // Initialize USB Manager
+        Serial.WriteString("[KERNEL]   - Initializing USB manager...\n");
+        UsbManager.Initialize();
+
+        // Try to find and initialize EHCI controller
+        Serial.WriteString("[KERNEL]   - Looking for EHCI USB controller...\n");
+        var ehci = EhciController.FindAndCreate();
+        if (ehci != null)
+        {
+            Serial.WriteString("[KERNEL]   - EHCI controller found, initializing...\n");
+            ehci.Initialize();
+            UsbManager.RegisterController(ehci);
+
+            // Print current USB port connectivity status
+            for (byte port = 0; port < ehci.PortCount; port++)
+            {
+                bool connected = ehci.IsPortConnected(port);
+                Serial.WriteString("[KERNEL]   - USB port ");
+                Serial.WriteNumber(port);
+                Serial.WriteString(connected ? ": device connected\n" : ": empty\n");
+            }
+        }
+        else
+        {
+            Serial.WriteString("[KERNEL]   - No EHCI controller found\n");
+        }
 
         // Initialize Network Manager
         Serial.WriteString("[KERNEL]   - Initializing network manager...\n");

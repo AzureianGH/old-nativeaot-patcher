@@ -14,5 +14,18 @@ public enum SubclassId
     SataController = 0x06,
     SasController = 0x07,
     NvmController = 0x08,
-    UnknownMassStorage = 0x09
+    UnknownMassStorage = 0x09,
+
+    // SerialBusController (Class 0x0C):
+    Firewire = 0x00,
+    AccessBus = 0x01,
+    SSA = 0x02,
+    UsbController = 0x03,
+    FibreChannel = 0x04,
+    SMBus = 0x05,
+    Infiniband = 0x06,
+    IpmiInterface = 0x07,
+    Sercos = 0x08,
+    Canbus = 0x09,
+    UnknownSerialBus = 0x0A
 }

@@ -5,6 +5,9 @@ using Cosmos.Kernel.Core.Runtime;
 using Cosmos.Kernel.Core.Scheduler;
 using Cosmos.Kernel.Graphics;
 using Cosmos.Kernel.HAL.Devices.Network;
+#if ARCH_X64
+using Cosmos.Kernel.HAL.X64.Devices.Usb;
+#endif
 using Cosmos.Kernel.System.Network;
 using Cosmos.Kernel.System.Network.Config;
 using Cosmos.Kernel.System.Network.IPv4;
@@ -99,6 +102,13 @@ public class Kernel : Sys.Kernel
                 StartGraphicsThread();
                 break;
 
+#if ARCH_X64
+            case "usb":
+            case "usbinfo":
+                ShowUsbInfo();
+                break;
+#endif
+
             case "kill":
                 if (parts.Length > 1 && uint.TryParse(parts[1], out uint killId))
                     KillThread(killId);
@@ -176,6 +186,9 @@ public class Kernel : Sys.Kernel
         PrintCommand("meminfo", "Show memory allocator state");
         PrintCommand("thread", "Test System.Threading.Thread");
         PrintCommand("gfx", "Start graphics thread (draws square)");
+    #if ARCH_X64
+        PrintCommand("usb", "Show USB controllers and port state");
+    #endif
         PrintCommand("kill <id>", "Kill a thread by ID");
         PrintCommand("halt", "Halt the system");
 #if ARCH_X64
@@ -814,4 +827,63 @@ public class Kernel : Sys.Kernel
         Console.WriteLine(message);
         Console.ResetColor();
     }
+
+#if ARCH_X64
+    private void ShowUsbInfo()
+    {
+        if (!UsbManager.IsInitialized)
+        {
+            PrintError("USB manager not initialized");
+            return;
+        }
+
+        UsbManager.PollControllers();
+
+        if (UsbManager.ControllerCount == 0)
+        {
+            PrintError("No USB controllers registered");
+            return;
+        }
+
+        Console.ForegroundColor = ConsoleColor.Gray;
+        Console.WriteLine("USB Controllers:");
+        Console.ResetColor();
+
+        for (int i = 0; i < UsbManager.ControllerCount; i++)
+        {
+            EhciController? controller = UsbManager.GetController(i);
+            if (controller == null)
+            {
+                continue;
+            }
+
+            Console.Write("  Controller ");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write(i);
+            Console.ResetColor();
+            Console.Write(" - ");
+            Console.Write(controller.Name);
+            Console.Write(" (EHCI)\n");
+
+            Console.Write("    Ready: ");
+            Console.ForegroundColor = controller.Ready ? ConsoleColor.Green : ConsoleColor.Red;
+            Console.Write(controller.Ready ? "YES" : "NO");
+            Console.ResetColor();
+            Console.Write("  Ports: ");
+            Console.WriteLine(controller.PortCount);
+
+            for (byte port = 0; port < controller.PortCount; port++)
+            {
+                bool connected = controller.IsPortConnected(port);
+                Console.Write("      Port ");
+                Console.Write(port);
+                Console.Write(": ");
+                Console.ForegroundColor = connected ? ConsoleColor.Green : ConsoleColor.DarkGray;
+                Console.Write(connected ? "device connected" : "empty");
+                Console.ResetColor();
+                Console.WriteLine();
+            }
+        }
+    }
+#endif
 }

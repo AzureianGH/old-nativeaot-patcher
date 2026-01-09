@@ -1,5 +1,6 @@
 #!/bin/pwsh
 # Build Packages in Release configuration
+rm -rf ./artifacts/
 dotnet build ./Packages.slnx -c Release
 
 # Configure the local NuGet source

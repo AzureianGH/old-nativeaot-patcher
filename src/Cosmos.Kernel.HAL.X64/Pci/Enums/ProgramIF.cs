@@ -10,5 +10,12 @@ public enum ProgramIf
     SataSerialStorageBus = 0x02,
     SasSerialStorageBus = 0x01,
     NvmNvmhci = 0x01,
-    NvmNvmExpress = 0x02
+    NvmNvmExpress = 0x02,
+
+    // SerialBusController → USB controller programming interface
+    UsbUhci = 0x00,
+    UsbOhci = 0x10,
+    UsbEhci = 0x20,
+    UsbXhci = 0x30,
+    UsbDevice = 0xFE
 }
